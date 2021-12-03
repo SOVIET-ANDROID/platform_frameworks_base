@@ -97,4 +97,6 @@
     <!-- Whether to cancel fingerprint operation if not idle -->
     <bool name="config_fpCancelIfNotIdle">false</bool>
 
+    <!-- Whether to disable Night Light on Udfps keyguard -->
+    <bool name="config_udfpsDisableNightLight">false</bool>
 </resources>
