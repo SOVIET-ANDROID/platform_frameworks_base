@@ -58,7 +58,6 @@ import android.view.WindowManagerGlobal;
 import com.android.internal.content.ReferrerIntent;
 import com.android.internal.util.custom.PixelPropsUtils;
 
-import com.android.internal.gmscompat.AttestationHooks;
 import com.android.internal.gmscompat.GmsHooks;
 
 import java.io.File;
@@ -1193,7 +1192,6 @@ public class Instrumentation {
                 .instantiateApplication(cl, className);
         app.attach(context);
         GmsHooks.initApplicationBeforeOnCreate(app);
-        AttestationHooks.initApplicationBeforeOnCreate(app);
         PixelPropsUtils.setProps(app.getPackageName());
         return app;
     }
@@ -1213,7 +1211,6 @@ public class Instrumentation {
         Application app = (Application)clazz.newInstance();
         app.attach(context);
         GmsHooks.initApplicationBeforeOnCreate(app);
-        AttestationHooks.initApplicationBeforeOnCreate(app);
         PixelPropsUtils.setProps(app.getPackageName());
         return app;
     }
