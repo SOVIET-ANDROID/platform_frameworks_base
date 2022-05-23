@@ -130,4 +130,6 @@
   <java-symbol type="style" name="GlobalActionsAnimationXylon" />
   <java-symbol type="style" name="GlobalActionsAnimationCard" />
 
+  <!-- Screen off delay -->
+  <java-symbol type="integer" name="config_screen_off_delay" />
 </resources>
