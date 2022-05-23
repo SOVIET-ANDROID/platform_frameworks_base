@@ -177,4 +177,6 @@
   <java-symbol type="string" name="config_batterymeterLandPowersavePathStyleB" />
   <java-symbol type="string" name="config_batterymeterLandErrorPerimeterPathStyleB" />
 
+  <!-- Screen off delay -->
+  <java-symbol type="integer" name="config_screen_off_delay" />
 </resources>
