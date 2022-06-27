@@ -161,7 +161,8 @@ public class PixelPropsUtils {
         propsToChangeOP8P.put("MANUFACTURER", "OnePlus");
     }
 
-   public static void setProps(Application app) {
+
+    public static void setProps(Application app) {
         final String packageName = app.getPackageName();
         final String processName = app.getProcessName();
 
@@ -172,10 +173,10 @@ public class PixelPropsUtils {
             return;
         }
 
-        if (packageName.startsWith("com.google.")
+       if (packageName.startsWith("com.google.")
                 || Arrays.asList(extraPackagesToChange).contains(packageName)) {
-
-               if ((Arrays.asList(packagesToChangePixel6).contains(packageName))
+            } else {
+                if ((Arrays.asList(packagesToChangePixel6).contains(packageName))
                         || Arrays.asList(extraPackagesToChange).contains(packageName)) {
                     propsToChange.putAll(propsToChangePixel6);
                 } else if (Arrays.asList(packagesToChangePixelXL).contains(packageName)) {
@@ -207,6 +208,7 @@ public class PixelPropsUtils {
                 setPropValue("FINGERPRINT", Build.VERSION.INCREMENTAL);
             }
 
+        } else {
             if (Arrays.asList(packagesToChangeROG1).contains(packageName)) {
                 if (DEBUG) Log.d(TAG, "Defining props for: " + packageName);
                 for (Map.Entry<String, Object> prop : propsToChangeROG1.entrySet()) {
