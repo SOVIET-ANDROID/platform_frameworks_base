@@ -175,7 +175,7 @@ public class PixelPropsUtils {
 
        if (packageName.startsWith("com.google.")
                 || Arrays.asList(extraPackagesToChange).contains(packageName)) {
-            } else {
+                    
                 if ((Arrays.asList(packagesToChangePixel6).contains(packageName))
                         || Arrays.asList(extraPackagesToChange).contains(packageName)) {
                     propsToChange.putAll(propsToChangePixel6);
