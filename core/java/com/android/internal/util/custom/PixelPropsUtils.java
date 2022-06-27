@@ -15,6 +15,7 @@
  */
 package com.android.internal.util.custom;
 
+import android.app.Application;
 import android.os.Build;
 import android.util.Log;
 
@@ -160,7 +161,10 @@ public class PixelPropsUtils {
         propsToChangeOP8P.put("MANUFACTURER", "OnePlus");
     }
 
-    public static void setProps(String packageName) {
+   public static void setProps(Application app) {
+        final String packageName = app.getPackageName();
+        final String processName = app.getProcessName();
+
         if (packageName == null) {
             return;
         }
@@ -192,9 +196,12 @@ public class PixelPropsUtils {
                 if (DEBUG) Log.d(TAG, "Defining " + key + " prop for: " + packageName);
                 setPropValue(key, value);
             }
-            if (packageName.equals(PACKAGE_GMS)) {
+
+            if (packageName.equals(PACKAGE_GMS) &&
+                    processName.equals(PACKAGE_GMS + ".unstable")) {
                 sIsGms = true;
             }
+
             // Set proper indexing fingerprint
             if (packageName.equals(PACKAGE_SETTINGS_SERVICES)) {
                 setPropValue("FINGERPRINT", Build.VERSION.INCREMENTAL);
