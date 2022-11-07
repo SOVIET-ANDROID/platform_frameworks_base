@@ -18,6 +18,7 @@ package com.android.internal.util;
 
 import android.app.Application;
 import android.content.res.Resources;
+import android.content.Context;
 import android.os.Build;
 import android.util.Log;
 
@@ -87,10 +88,10 @@ public class PropImitationHooks {
     private static volatile boolean sIsPhotos = false;
 
     public static void setProps(Application app) {
-        final String packageName = app.getPackageName();
+        final String packageName = context.getPackageName();
         final String processName = app.getProcessName();
 
-        if (packageName == null || processName == null) {
+        if (packageName == null || packageName.isEmpty() || processName == null) {
             return;
         }
 
