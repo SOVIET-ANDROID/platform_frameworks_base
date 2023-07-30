@@ -43,6 +43,7 @@ import static com.android.systemui.keyguard.KeyguardIndicationRotateTextViewCont
 import static com.android.systemui.keyguard.KeyguardIndicationRotateTextViewController.INDICATION_TYPE_USER_LOCKED;
 import static com.android.systemui.keyguard.ScreenLifecycle.SCREEN_ON;
 import static com.android.systemui.plugins.FalsingManager.LOW_PENALTY;
+import static com.android.keyguard.KeyguardUpdateMonitor.FACE_UNLOCK_BEHAVIOR_SWIPE;
 import static com.android.systemui.plugins.log.LogLevel.ERROR;
 
 import android.app.AlarmManager;
@@ -135,6 +136,8 @@ public class KeyguardIndicationController {
 
     private static final int MSG_SHOW_ACTION_TO_UNLOCK = 1;
     private static final int MSG_RESET_ERROR_MESSAGE_ON_SCREEN_ON = 2;
+    private static final int MSG_SHOW_RECOGNIZING_FACE = 3;
+    private static final int MSG_HIDE_RECOGNIZING_FACE = 4;
     private static final long TRANSIENT_BIOMETRIC_ERROR_TIMEOUT = 1300;
     public static final long DEFAULT_HIDE_DELAY_MS =
             3500 + KeyguardIndicationTextView.Y_IN_DURATION;
@@ -202,6 +205,8 @@ public class KeyguardIndicationController {
 
     private boolean mInited;
 
+    private boolean mFaceDetectionRunning;
+
     private KeyguardUpdateMonitorCallback mUpdateMonitorCallback;
 
     private boolean mDozing;
@@ -218,6 +223,15 @@ public class KeyguardIndicationController {
                 // We want to keep this message around in case the screen was off
                 hideBiometricMessageDelayed(DEFAULT_HIDE_DELAY_MS);
                 mBiometricErrorMessageToShowOnScreenOn = null;
+            }
+        }
+
+        @Override
+        public void onScreenTurnedOff() {
+            if (mFaceDetectionRunning) {
+                mFaceDetectionRunning = false;
+                mBiometricErrorMessageToShowOnScreenOn = null;
+                hideFaceUnlockRecognizingMessage();
             }
         }
     };
@@ -295,6 +309,11 @@ public class KeyguardIndicationController {
                     showActionToUnlock();
                 } else if (msg.what == MSG_RESET_ERROR_MESSAGE_ON_SCREEN_ON) {
                     mBiometricErrorMessageToShowOnScreenOn = null;
+                } else if (msg.what == MSG_SHOW_RECOGNIZING_FACE) {
+                    mBiometricErrorMessageToShowOnScreenOn = null;
+                    showFaceUnlockRecognizingMessage();
+                } else if (msg.what == MSG_HIDE_RECOGNIZING_FACE) {
+                    hideFaceUnlockRecognizingMessage();
                 }
             }
         };
@@ -827,6 +846,28 @@ public class KeyguardIndicationController {
         }
     }
 
+    private void showFaceUnlockRecognizingMessage() {
+        if (mKeyguardUpdateMonitor.getFaceUnlockBehavior() == FACE_UNLOCK_BEHAVIOR_SWIPE){
+            return;
+        }
+
+        showBiometricMessage(mContext.getResources().getString(
+                                    R.string.face_unlock_recognizing));
+    }
+
+    private void hideFaceUnlockRecognizingMessage() {
+        if (mKeyguardUpdateMonitor.getFaceUnlockBehavior() == FACE_UNLOCK_BEHAVIOR_SWIPE){
+            return;
+        }
+
+        String faceUnlockMessage = mContext.getResources().getString(
+            R.string.face_unlock_recognizing);
+        if (mBiometricMessage != null && mBiometricMessage == faceUnlockMessage) {
+            mBiometricMessage = null;
+            hideBiometricMessage();
+        }
+    }
+
     /**
      * Hides transient indication.
      */
@@ -862,10 +903,14 @@ public class KeyguardIndicationController {
             mTopIndicationView.setTextColor(Color.WHITE);
 
             CharSequence newIndication;
+            boolean setWakelock = false;
+
             if (!TextUtils.isEmpty(mBiometricMessage)) {
                 newIndication = mBiometricMessage; // note: doesn't show mBiometricMessageFollowUp
+                setWakelock = true;
             } else if (!TextUtils.isEmpty(mTransientIndication)) {
                 newIndication = mTransientIndication;
+                setWakelock = true;
             } else if (!mBatteryPresent) {
                 // If there is no battery detected, hide the indication and bail
                 mIndicationArea.setVisibility(GONE);
@@ -873,17 +918,25 @@ public class KeyguardIndicationController {
             } else if (!TextUtils.isEmpty(mAlignmentIndication)) {
                 newIndication = mAlignmentIndication;
                 mTopIndicationView.setTextColor(mContext.getColor(R.color.misalignment_text_color));
+                setWakelock = false;
             } else if (mPowerPluggedIn || mEnableBatteryDefender) {
                 newIndication = computePowerIndication();
+                setWakelock = animate;
             } else {
                 newIndication = NumberFormat.getPercentInstance()
                         .format(mBatteryLevel / 100f);
+                setWakelock = false;
             }
 
             if (!TextUtils.equals(mTopIndicationView.getText(), newIndication)) {
-                mWakeLock.setAcquired(true);
-                mTopIndicationView.switchIndication(newIndication, null,
-                        animate, () -> mWakeLock.setAcquired(false));
+                if (setWakelock) {
+                    mWakeLock.setAcquired(true);
+                    mTopIndicationView.switchIndication(newIndication, null,
+                            animate, () -> mWakeLock.setAcquired(false));
+                } else {
+                    mTopIndicationView.switchIndication(newIndication, null,
+                            false /* animate */, null /* onAnimationEndCallback */);
+                }
             }
             return;
         }
@@ -1329,11 +1382,17 @@ public class KeyguardIndicationController {
         @Override
         public void onBiometricRunningStateChanged(boolean running,
                 BiometricSourceType biometricSourceType) {
-            if (running && biometricSourceType == FACE) {
-                // Let's hide any previous messages when authentication starts, otherwise
-                // multiple auth attempts would overlap.
-                hideBiometricMessage();
-                mBiometricErrorMessageToShowOnScreenOn = null;
+            if (biometricSourceType == BiometricSourceType.FACE) {
+                mFaceDetectionRunning = running;
+                if (running) {
+                    mHandler.removeMessages(MSG_HIDE_RECOGNIZING_FACE);
+                    mHandler.removeMessages(MSG_SHOW_RECOGNIZING_FACE);
+                    mHandler.sendEmptyMessageDelayed(MSG_SHOW_RECOGNIZING_FACE, 100);
+                } else {
+                    mHandler.removeMessages(MSG_SHOW_RECOGNIZING_FACE);
+                    mHandler.removeMessages(MSG_HIDE_RECOGNIZING_FACE);
+                    mHandler.sendEmptyMessageDelayed(MSG_HIDE_RECOGNIZING_FACE, 100);
+                }
             }
         }
 
